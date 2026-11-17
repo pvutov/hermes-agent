@@ -155,6 +155,8 @@ COMMAND_REGISTRY: list[CommandDef] = [
                aliases=("hb",), args_hint="[every <interval> <prompt> | status | pause | resume | clear]",
                subcommands=("status", "pause", "resume", "clear"),
                busy_policy="dispatch"),
+    CommandDef("delay", "Do something in this conversation later, once (e.g. /delay 5h check the build)",
+               "Session", args_hint="<interval> <prompt>", busy_policy="dispatch"),
     CommandDef("refine", "Review this conversation now and save lessons to memory/skills", "Session",
                args_hint="[focus instructions]"),
     CommandDef("review", "Spawn an independent subagent to review the work just discussed (PR, code, docs)", "Session",
@@ -459,7 +461,7 @@ HELP_SESSION_SUBGROUPS: dict[str, tuple[str, ...]] = {
     "Context": ("compress", "compact", "context", "ctx", "status"),
     "Background & Automation": (
         "bg", "btw", "agents", "tasks", "queue", "q", "steer", "s", "goal", "subgoal", "heartbeat", "hb",
-        "refine", "loop", "proactive", "moa", "journey", "learning", "memory-graph")}
+        "delay", "refine", "loop", "proactive", "moa", "journey", "learning", "memory-graph")}
 
 # All names + aliases the gateway dispatches. Config-gated commands are
 # included; their handler checks the gate at runtime.

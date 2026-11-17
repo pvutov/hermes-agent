@@ -974,6 +974,17 @@ gateway:
     invalid_prefix: "Invalid heartbeat"
     set: "♥ Heartbeat set (every {interval}): {prompt}\nFires as a normal turn whenever this session is idle and the interval has elapsed. Lives while the gateway runs — use `hermes cron` for durable schedules."
 
+  delay:
+    unavailable: "Delays unavailable (no session)."
+    usage: "Usage: /delay <interval> <prompt>  (e.g. /delay 5h look into this Jenkins warning)"
+    usage_also: "Intervals: 30m, 5h, 2d (minimum 60s). Fires once, in this conversation, when the session is idle. Survives process restart via SessionDB while the gateway runs — use `hermes cron` for durable work."
+    interval_too_small: "Interval too small — minimum is {min_seconds}s."
+    prompt_required: "Usage: /delay <interval> <prompt> — the prompt is required."
+    invalid_label: "Invalid delay"
+    heartbeat_active: "⏸ A recurring heartbeat is already active in this session. Clear it with /heartbeat clear before using /delay, so neither silently replaces the other."
+    set: "⏳ Delayed (once in {interval}): {prompt}\nFires as a single normal turn in this conversation, with its context intact, once the interval elapses and the session is idle."
+    set_note: "Nothing runs before then, so the wait costs no backend load. Cancel with /heartbeat clear."
+
   refine:
     unavailable: "Refine unavailable (no session)."
     nothing_yet: "Nothing to refine yet — send a message first."

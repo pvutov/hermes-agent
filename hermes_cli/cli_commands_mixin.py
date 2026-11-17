@@ -1502,6 +1502,44 @@ class CLICommandsMixin(CLICommandsSessionToolsMixin, CLIHandoffMixin):
         _cp(f"  {_t('heartbeat.set', interval=format_interval(state.interval_seconds), prompt=state.prompt)}",
             _dim_line(_t("heartbeat.set_note")))
 
+    def _handle_delay_command(self, cmd: str) -> None:
+        """Dispatch /delay <interval> <prompt> — defer one instruction into THIS session.
+
+        Implemented on the session heartbeat (one-shot): the deferred prompt re-enters this
+        conversation, with its context intact, as an ordinary user turn once the interval elapses
+        and the session is idle. Nothing is inferred at delay time, so a /delay costs no backend
+        load until it fires.
+        """
+        from hermes_cli.heartbeat import parse_interval, format_interval
+        arg = _command_arg(cmd)
+        tokens = arg.split(None, 1)
+        if not tokens:
+            return _cp(f"  {_t('delay.usage')}", _dim_line(_t("delay.usage_also")))
+        # Bare "5h" means "in 5h" here: unlike /cron, a delay is one-shot by definition, so the
+        # explicit "in " prefix the schedule parser needs would be noise.
+        interval = parse_interval(tokens[0])
+        prompt = tokens[1].strip() if len(tokens) > 1 else ""
+        if interval is None:
+            return _cp(f"  {_t('delay.usage')}", _dim_line(_t("delay.usage_also")))
+        if interval < 0:
+            from hermes_cli.heartbeat import MIN_INTERVAL_SECONDS
+            return _cp(f"  {_t('delay.interval_too_small', min_seconds=MIN_INTERVAL_SECONDS)}")
+        if not prompt:
+            return _cp(f"  {_t('delay.prompt_required')}")
+        mgr = self._session_manager(self._get_heartbeat_manager, _t("heartbeat.label"))
+        if mgr is None:
+            return
+        # A delay is a single instruction: replacing an existing heartbeat would silently drop a
+        # standing one, so refuse rather than clobber.
+        if mgr.is_active() and not getattr(mgr.state, "once", False):
+            return _cp(f"  {_t('delay.heartbeat_active')}")
+        state = _attempt(_t("delay.invalid_label"), ValueError, mgr.delay, prompt, interval)
+        if state is _FAILED:
+            return
+        self._start_heartbeat_watchdog()
+        _cp(f"  {_t('delay.set', interval=format_interval(state.interval_seconds), prompt=state.prompt)}",
+            _dim_line(_t("delay.set_note")))
+
     def _handle_refine_command(self, cmd: str) -> None:
         """Dispatch /refine — run the memory/skill review fork on demand (same machinery as the
         automatic post-turn ``_spawn_background_review``), with optional focus text. Background
