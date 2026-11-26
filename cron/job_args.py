@@ -118,6 +118,9 @@ def _local_delivery_notice(job: dict[str, Any], user_deliver: Optional[str]) -> 
     back into the session. This is by design (there is no live-delivery channel for local sessions), but
     silently dropping the user's "tell me when it runs" intent is the trap reported in 51568. Surface it at
     create time so the agent can relay it instead of promising a delivery that never happens. See #51568.
+
+    Returns a bare sentence: callers own the presentation (the tool prefixes it in ``message``, the CLI
+    labels its own line), so a second "Note:" prefix cannot end up in the text.
     """
     if (user_deliver or "").strip().lower() == "local":
         return None
@@ -130,7 +133,7 @@ def _local_delivery_notice(job: dict[str, Any], user_deliver: Optional[str]) -> 
             from gateway.session_context import async_delivery_supported, get_session_env
             fallback = [t for t in targets if t.get("_resolved_from") == "origin_fallback"]
             if fallback and get_session_env("HERMES_SESSION_PLATFORM") and not async_delivery_supported():
-                return ("Note: this stateless HTTP API session cannot receive cron delivery, so this "
+                return ("This stateless HTTP API session cannot receive cron delivery, so this "
                         f"job will report to the home channel {fallback[0]['platform']}:"
                         f"{fallback[0]['chat_id']} instead of back here.")
             return None
