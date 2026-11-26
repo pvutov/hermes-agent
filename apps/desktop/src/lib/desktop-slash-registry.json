@@ -26,6 +26,7 @@
   "/ctx": null,
   "/curator": "advanced",
   "/debug": null,
+  "/delay": null,
   "/deny": null,
   "/diff": null,
   "/discard": null,
