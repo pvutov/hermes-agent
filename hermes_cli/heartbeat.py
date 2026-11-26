@@ -3,7 +3,11 @@
 Session-scoped and in-process (CLI or gateway must be running); durable cross-process scheduling stays
 ``hermes cron``. Invariants (mirrors goals.py): injection is a plain user message — no system-prompt
 mutation or toolset swap, so prompt caching stays intact — and a real user message always wins:
-heartbeats only fire into an idle session with an empty input queue."""
+heartbeats only fire into an idle session with an empty input queue.
+
+``/delay`` rides the same machinery with ``once`` set: one deferred instruction, whose
+``interval_seconds`` is a deadline rather than a cadence, retired as it fires.
+"""
 
 from __future__ import annotations
 
@@ -117,7 +121,13 @@ _META_PREFIX = "heartbeat:"
 _CLAIM_LOCK = threading.Lock()  # every driver of a session's heartbeat runs in its owning gateway process
 
 
-def load_heartbeat(session_id: str) -> Optional[HeartbeatState]:
+def load_heartbeat(session_id: str, *, include_cleared: bool = False) -> Optional[HeartbeatState]:
+    """The session's stored heartbeat, or None.
+
+    ``include_cleared`` returns a retired (``cleared``) row too. Every user-facing caller wants it
+    hidden; ``abandon_fire`` does not, because a one-shot retires in the same write that records its
+    fire, and a fire whose turn never started has to be rewindable from that row.
+    """
     db = _get_session_db() if session_id else None
     if db is None:
         return None
@@ -131,28 +141,9 @@ def load_heartbeat(session_id: str) -> Optional[HeartbeatState]:
     except Exception as exc:
         logger.warning("HeartbeatManager: could not parse stored heartbeat for %s: %s", session_id, exc)
         return None
-    return None if state is None or state.status == "cleared" else state
-
-
-def load_heartbeat_raw(session_id: str) -> Optional[HeartbeatState]:
-    """The stored state including a ``cleared`` one, whose LAST fire still needs to be rewindable.
-
-    :func:`load_heartbeat` hides cleared rows because they are retired for every user-facing
-    caller. A one-shot retires as it fires, so ``abandon_fire`` must still see that row to undo a
-    fire whose turn never started.
-    """
-    db = _get_session_db() if session_id else None
-    if db is None:
+    if state is None or (state.status == "cleared" and not include_cleared):
         return None
-    try:
-        raw = db.state_meta.get(_META_PREFIX + session_id)
-    except Exception as exc:
-        logger.debug("HeartbeatManager: state_meta.get (raw) failed: %s", exc)
-        return None
-    try:
-        return HeartbeatState.from_json(raw) if raw else None
-    except Exception:
-        return None
+    return state
 
 
 def store_has_active_heartbeat(db: Any) -> bool:
@@ -207,7 +198,9 @@ class HeartbeatManager:
 
     def status_line(self) -> str:
         s = self._state
-        if s is None:
+        # A retired one-shot keeps its row only so abandon_fire can rewind the fire; it is not a
+        # schedule any more, and reporting it would show a delay that already fired.
+        if s is None or s.status == "cleared":
             return "No heartbeat. Set one with /heartbeat every <interval> <prompt>."
         every = format_interval(s.interval_seconds)
         fired = f", fired {s.fire_count}×" if s.fire_count else ""
@@ -221,37 +214,46 @@ class HeartbeatManager:
         return f"{icon}{kind} ({s.status}, {cadence}{fired}): {s.prompt}"
 
     def set(self, prompt: str, interval_seconds: int) -> HeartbeatState:
-        prompt = (prompt or "").strip()
-        if not prompt:
-            raise ValueError("heartbeat prompt is empty")
-        interval_seconds = int(interval_seconds)
-        if interval_seconds < MIN_INTERVAL_SECONDS:
-            raise ValueError(f"interval must be at least {MIN_INTERVAL_SECONDS}s")
-        self._state = HeartbeatState(prompt=prompt, interval_seconds=interval_seconds, status="active",
-                                     created_at=time.time())
-        save_heartbeat(self.session_id, self._state)
-        return self._state
+        """Set the session's recurring instruction: fires every *interval_seconds* until stopped."""
+        seconds = self._validated_interval(interval_seconds)
+        return self._install(prompt, seconds, once=False, empty="heartbeat prompt is empty")
 
     def delay(self, prompt: str, seconds: int) -> HeartbeatState:
         """Set a ONE-SHOT deferred prompt: fire once after *seconds*, then retire.
 
         Same storage and idle-injection path as a heartbeat — which is the point: the prompt arrives
         in *this* conversation, with its context intact, as an ordinary user turn. The difference is
-        that ``interval_seconds`` is a deadline rather than a cadence.
+        that ``interval_seconds`` is a deadline rather than a cadence, and the same floor applies:
+        re-entering sooner than ``MIN_INTERVAL_SECONDS`` is a busy loop, not a delay.
+        """
+        return self._install(prompt, self._validated_interval(seconds), once=True, empty="delay prompt is empty")
+
+    def _validated_interval(self, seconds: int) -> int:
+        seconds = int(seconds)
+        if seconds < MIN_INTERVAL_SECONDS:
+            raise ValueError(f"interval must be at least {MIN_INTERVAL_SECONDS}s")
+        return seconds
+
+    def _install(self, prompt: str, seconds: int, *, once: bool, empty: str) -> HeartbeatState:
+        """Replace the session's state with a fresh ``active`` one and persist it.
+
+        A new schedule ends whatever the previous one left behind: the claim records only describe
+        the state being replaced, so keeping them could rewind a fire onto an unrelated schedule.
         """
         prompt = (prompt or "").strip()
         if not prompt:
-            raise ValueError("delay prompt is empty")
-        seconds = int(seconds)
-        if seconds < 1:
-            raise ValueError("delay must be at least 1 second")
+            raise ValueError(empty)
         self._state = HeartbeatState(prompt=prompt, interval_seconds=seconds, status="active",
-                                     created_at=time.time(), once=True)
+                                     created_at=time.time(), once=once)
+        self._last_claim = None
+        self._retired_once = None
         save_heartbeat(self.session_id, self._state)
         return self._state
 
     def _set_status(self, status: str, *, reanchor: bool = False) -> Optional[HeartbeatState]:
-        if not self._state:
+        # A retired one-shot is not a schedule: pause/resume/clear must not resurrect the delay the
+        # row is only kept to make rewindable, so they report "none set" instead.
+        if self._state is None or self._state.status == "cleared":
             return None
         with _CLAIM_LOCK:  # a stop landing inside a claim's reread-then-write would be overwritten by it
             self._state.status = status
@@ -268,6 +270,14 @@ class HeartbeatManager:
         return self._set_status("active", reanchor=True)
 
     def clear(self) -> bool:
+        """Stop and forget the schedule (True when there was one to clear).
+
+        A retired one-shot is left alone: ``_set_status`` refuses it, and its row is what makes the
+        last fire rewindable — dropping the state here would lose deferred work whose turn never
+        started.
+        """
+        if self._state is not None and self._state.status == "cleared":
+            return False
         cleared = self._set_status("cleared") is not None
         self._state = None
         return cleared
@@ -298,14 +308,12 @@ class HeartbeatManager:
             s.last_fired_at = now if now is not None else time.time()
             s.fire_count += 1
             if s.once:
+                # A one-shot retires in the same write that records the fire: the row stays (NOT
+                # cleared to None) because a fire whose turn never starts must stay rewindable (see
+                # abandon_fire). has_heartbeat/is_active/status_line already read "cleared" as gone.
                 s.status = "cleared"
-                save_heartbeat(self.session_id, s)
-                # Deliberately NOT cleared to None: a fire that never reaches the agent must stay
-                # rewindable (see abandon_fire). ``has_heartbeat``/``is_active`` already read this
-                # status as retired, so the caller-visible surface is unchanged.
-                self._retired_once = (s.last_fired_at, s.fire_count)
-                return s.render_prompt()
             save_heartbeat(self.session_id, s)
+            self._retired_once = (s.last_fired_at, s.fire_count) if s.once else None
             return s.render_prompt()
 
     def abandon_fire(self) -> bool:
@@ -316,31 +324,26 @@ class HeartbeatManager:
         A one-shot is the case this matters most for: it retires as it fires, so without the rewind a
         turn that never started would drop the deferred instruction entirely instead of leaving it due.
         """
-        claim, s = self._last_claim, self._state
-        if claim is None or s is None:
-            return False
         # Same reread-then-write hazard as due_prompt: a pause/clear landing between the read and
         # the write would be overwritten by this rewind.
         with _CLAIM_LOCK:
-            current = load_heartbeat_raw(self.session_id) if s.once else load_heartbeat(self.session_id)
-            # A retired one-shot is persisted as "cleared", which load_heartbeat() hides; accept
-            # that shape when it is still the fire this manager claimed.
-            retired_once = self._retired_once if s.once else None
-            if retired_once is not None:
-                if (current is not None and current.status == "cleared"
-                        and (current.last_fired_at, current.fire_count) == retired_once):
-                    s.last_fired_at, s.fire_count = claim
-                    s.status = "active"
-                    self._last_claim = None
-                    self._retired_once = None
-                    save_heartbeat(self.session_id, s)
-                    return True
+            claim, s = self._last_claim, self._state
+            if claim is None or s is None:
                 return False
-            if current is None or current.status != "active" or (current.last_fired_at, current.fire_count) != (
-                    s.last_fired_at, s.fire_count):
+            # The shape this manager may rewind: a recurring fire left the row "active", a one-shot
+            # fire retired it as "cleared" (which plain load_heartbeat() hides). A pause/clear that
+            # landed in between left a different status, and wins.
+            want_status = "cleared" if s.once else "active"
+            want = self._retired_once if s.once else (s.last_fired_at, s.fire_count)
+            if want is None:
+                return False
+            current = load_heartbeat(self.session_id, include_cleared=s.once)
+            if (current is None or current.status != want_status
+                    or (current.last_fired_at, current.fire_count) != want):
                 return False
             s.last_fired_at, s.fire_count = claim
-            self._last_claim = None
+            s.status = "active"
+            self._last_claim = self._retired_once = None
             save_heartbeat(self.session_id, s)
             return True
 
@@ -366,6 +369,7 @@ def migrate_heartbeat_to_session(old_session_id: str, new_session_id: str) -> bo
 
 
 __all__ = [
+    "DELAY_PROMPT_TEMPLATE",
     "HEARTBEAT_PROMPT_TEMPLATE",
     "MIN_INTERVAL_SECONDS",
     "POLL_SECONDS",
