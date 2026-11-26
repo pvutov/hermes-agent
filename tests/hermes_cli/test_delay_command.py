@@ -10,23 +10,48 @@ def iso_home(tmp_path, monkeypatch):
     """Isolate SessionDB so heartbeat state never touches the real profile."""
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
     from hermes_cli import heartbeat as hb
-    monkeypatch.setattr(hb, "_get_session_db", lambda: _FakeDB(), raising=True)
-    return tmp_path
+
+    db = _FakeDB()  # one store per test: the rows mapping must not leak between cases
+    monkeypatch.setattr(hb, "_get_session_db", lambda: db, raising=True)
+    return db
+
+
+def _elapse(mgr, db, seconds):
+    """Move the delay's deadline into the past, IN THE STORE.
+
+    due_prompt() rereads the stored row and compare-and-sets against it, so poking
+    ``mgr.state.created_at`` alone would be discarded as a stale claim.
+    """
+    from hermes_cli.heartbeat import save_heartbeat
+
+    mgr.state.created_at = time.time() - seconds
+    save_heartbeat(mgr.session_id, mgr.state)
 
 
 class _FakeDB:
-    """Minimal SessionDB stand-in: the two meta calls heartbeat persistence uses."""
+    """Minimal SessionDB stand-in: the meta store heartbeat persistence uses."""
 
-    rows: dict = {}
+    class _Store:
+        def __init__(self, rows):
+            self._rows = rows
 
-    def get_meta(self, key):
-        return self.rows.get(key)
+        def get(self, key):
+            return self._rows.get(key)
 
-    def set_meta(self, key, value):
-        self.rows[key] = value
+        def set(self, key, value):
+            self._rows[key] = value
 
-    def list_meta_prefix(self, prefix):
-        return [(k, v) for k, v in self.rows.items() if k.startswith(prefix)]
+        def list_prefix(self, prefix):
+            return [_Entry(k, v) for k, v in self._rows.items() if k.startswith(prefix)]
+
+    def __init__(self):
+        self.rows = {}
+        self.state_meta = self._Store(self.rows)
+
+
+class _Entry:
+    def __init__(self, key, value):
+        self.key, self.value = key, value
 
 
 class TestDelayState:
@@ -74,7 +99,7 @@ class TestDelayManager:
 
         mgr = HeartbeatManager("sess-once")
         mgr.delay("look into the warning", 60)
-        mgr.state.created_at = time.time() - 120  # interval elapsed
+        _elapse(mgr, iso_home, 120)
 
         assert mgr.due_prompt() is not None
         assert mgr.due_prompt() is None          # never twice
@@ -85,7 +110,7 @@ class TestDelayManager:
 
         mgr = HeartbeatManager("sess-fresh")
         mgr.delay("x", 60)
-        mgr.state.created_at = time.time() - 120
+        _elapse(mgr, iso_home, 120)
         mgr.due_prompt()
 
         fresh = HeartbeatManager("sess-fresh")
@@ -99,7 +124,7 @@ class TestDelayManager:
 
         mgr = HeartbeatManager("sess-abandon")
         mgr.delay("must not be lost", 60)
-        mgr.state.created_at = time.time() - 120
+        _elapse(mgr, iso_home, 120)
 
         assert mgr.due_prompt() is not None
         assert mgr.abandon_fire() is True
@@ -111,7 +136,7 @@ class TestDelayManager:
 
         mgr = HeartbeatManager("sess-hb")
         mgr.set("watch ci", 60)
-        mgr.state.created_at = time.time() - 120
+        _elapse(mgr, iso_home, 120)
 
         assert mgr.due_prompt() is not None
         assert mgr.is_active() is True   # recurring survives its fire

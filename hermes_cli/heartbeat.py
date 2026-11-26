@@ -145,9 +145,9 @@ def load_heartbeat_raw(session_id: str) -> Optional[HeartbeatState]:
     if db is None:
         return None
     try:
-        raw = db.get_meta(_META_PREFIX + session_id)
+        raw = db.state_meta.get(_META_PREFIX + session_id)
     except Exception as exc:
-        logger.debug("HeartbeatManager: get_meta (raw) failed: %s", exc)
+        logger.debug("HeartbeatManager: state_meta.get (raw) failed: %s", exc)
         return None
     try:
         return HeartbeatState.from_json(raw) if raw else None
