@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "Sceideal: {schedule} ({repeat})"
       next_run: "An chéad rith eile: {value}"
       next_run_na: "An chéad rith eile: N/B"
+      delivery_notice: "Nóta: {notice}"
       prompt: "Leid: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "earráid: {error}"

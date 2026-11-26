@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "Agendamento: {schedule} ({repeat})"
       next_run: "Próxima execução: {value}"
       next_run_na: "Próxima execução: N/D"
+      delivery_notice: "Nota: {notice}"
       prompt: "Prompt: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "erro: {error}"

@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "Розклад: {schedule} ({repeat})"
       next_run: "Наступний запуск: {value}"
       next_run_na: "Наступний запуск: н/д"
+      delivery_notice: "Примітка: {notice}"
       prompt: "Запит: {prompt}"
       status_delivery_failed: "не доставлено: {error}"
       status_error: "помилка: {error}"

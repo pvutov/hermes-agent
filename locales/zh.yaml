@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "计划：{schedule}（{repeat}）"
       next_run: "下次运行：{value}"
       next_run_na: "下次运行：无"
+      delivery_notice: "注意：{notice}"
       prompt: "提示词：{prompt}"
       status_delivery_failed: "delivery_failed：{error}"
       status_error: "error：{error}"

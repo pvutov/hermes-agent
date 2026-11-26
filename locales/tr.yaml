@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "Zamanlama: {schedule} ({repeat})"
       next_run: "Sonraki çalıştırma: {value}"
       next_run_na: "Sonraki çalıştırma: yok"
+      delivery_notice: "Not: {notice}"
       prompt: "İstem: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "hata: {error}"

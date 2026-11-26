@@ -3015,6 +3015,7 @@ cli:
       schedule_repeat: "Ütemezés: {schedule} ({repeat})"
       next_run: "Következő futás: {value}"
       next_run_na: "Következő futás: n/a"
+      delivery_notice: "Megjegyzés: {notice}"
       prompt: "Prompt: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "hiba: {error}"

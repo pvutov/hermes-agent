@@ -3290,6 +3290,7 @@ cli:
       schedule_repeat: "Planification : {schedule} ({repeat})"
       next_run: "Prochaine : {value}"
       next_run_na: "Prochaine : N/A"
+      delivery_notice: "Remarque : {notice}"
       prompt: "Prompt : {prompt}"
       status_delivery_failed: "delivery_failed : {error}"
       status_error: "erreur : {error}"

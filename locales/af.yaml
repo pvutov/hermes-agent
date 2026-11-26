@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "Skedule: {schedule} ({repeat})"
       next_run: "Volgende lopie: {value}"
       next_run_na: "Volgende lopie: n.v.t."
+      delivery_notice: "Let wel: {notice}"
       prompt: "Prompt: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "fout: {error}"

@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "スケジュール: {schedule} ({repeat})"
       next_run: "次回実行: {value}"
       next_run_na: "次回実行: なし"
+      delivery_notice: "注意：{notice}"
       prompt: "プロンプト: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "error: {error}"

@@ -2998,6 +2998,7 @@ cli:
       schedule_repeat: "예약: {schedule} ({repeat})"
       next_run: "다음 실행: {value}"
       next_run_na: "다음 실행: 해당 없음"
+      delivery_notice: "참고: {notice}"
       prompt: "프롬프트: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "오류: {error}"
