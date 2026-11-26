@@ -235,6 +235,9 @@ class GatewayHeartbeatManager(_Remote):
     def set(self, prompt, interval_seconds):
         return self._rpc("set", prompt, int(interval_seconds))
 
+    def delay(self, prompt, seconds):
+        return self._rpc("delay", prompt, int(seconds))
+
     def pause(self):
         return self._rpc("pause")
 

@@ -27,12 +27,12 @@ _CALLS = {
                        "wait_for_seconds", "stop_waiting", "is_waiting", "evaluate_after_turn", "command"}),
     "loop": frozenset({"state", "set", "pause", "resume", "clear", "fire_tick", "abandon_tick", "complete_tick",
                        "goal_blocks_tick"}),
-    "heartbeat": frozenset({"state", "set", "pause", "resume", "clear", "due_prompt", "abandon_fire"}),
+    "heartbeat": frozenset({"state", "set", "delay", "pause", "resume", "clear", "due_prompt", "abandon_fire"}),
 }
 _READS = frozenset({"state", "is_waiting", "goal_blocks_tick"})
-# /heartbeat set and resume start the CLI's watchdog when they return a state (cli_commands_mixin);
-# only it calls due_prompt.
-_WATCHDOG_CALLS = frozenset({"set", "resume", "due_prompt"})
+# /heartbeat set, /delay and /heartbeat resume start the CLI's watchdog when they return a state
+# (cli_commands_mixin); only it calls due_prompt.
+_WATCHDOG_CALLS = frozenset({"set", "delay", "resume", "due_prompt"})
 _FIELDS = frozenset({"session_id", "profile", "kind", "call", "args", "kwargs"})
 _ERRORS = (RuntimeError, ValueError, IndexError)
 

@@ -166,6 +166,47 @@ class GatewayGoalCommandsMixin:
         _watch()
         return t("gateway.heartbeat.set", interval=format_interval(state.interval_seconds), prompt=state.prompt)
 
+    async def _handle_delay_command(self, event: MessageEvent) -> str:
+        """Handle /delay (mirror of the CLI handler): one deferred instruction that re-enters THIS
+        chat once, when the interval has elapsed and the session is idle.
+
+        Same session-heartbeat machinery and the same gateway-wide poller as /heartbeat, with
+        ``once`` set, so the deferred prompt arrives with the conversation's context intact. The
+        replies reuse the CLI's ``cli.commands.delay.*`` copy: the wording is identical on both
+        surfaces, so one catalog block serves them rather than a duplicate under ``gateway.``.
+        """
+        from hermes_cli.heartbeat import parse_interval, format_interval, MIN_INTERVAL_SECONDS
+        args = (event.get_command_args() or "").strip()
+        tokens = args.split(None, 1)
+        if not tokens:
+            return t("cli.commands.delay.usage")
+        # Bare "5h" means "in 5h": a delay is one-shot by definition, so no "in " prefix.
+        interval = parse_interval(tokens[0])
+        prompt = tokens[1].strip() if len(tokens) > 1 else ""
+        if interval is None:
+            return t("cli.commands.delay.usage")
+        if interval < 0:
+            return t("cli.commands.delay.interval_too_small", min_seconds=MIN_INTERVAL_SECONDS)
+        if not prompt:
+            return t("cli.commands.delay.prompt_required")
+        mgr, _session_entry = await self._get_heartbeat_manager_for_event(event)
+        if mgr is None:
+            return t("gateway.heartbeat.unavailable")
+        # A delay is a single instruction: replacing an active recurring heartbeat would silently
+        # drop a standing one, so refuse rather than clobber.
+        if mgr.is_active() and not getattr(mgr.state, "once", False):
+            return t("cli.commands.delay.heartbeat_active")
+        state, err = _mgr_call(t("cli.commands.delay.invalid_label"), mgr.delay, prompt, interval,
+                               errors=(ValueError,))
+        if err:
+            return err
+        quick_key = self._session_key_for_source(event.source) if event.source else None
+        if quick_key:
+            self._register_heartbeat_watch(quick_key, event.source, mgr.session_id)
+        return "\n".join((t("cli.commands.delay.set", interval=format_interval(state.interval_seconds),
+                            prompt=state.prompt),
+                          t("cli.commands.delay.set_note")))
+
     def _idle_cached_agent_or_error(self, event: MessageEvent, verb: str):
         """``(session_key, cached_agent, None)`` for /refine and /review, or ``(_, _, error_text)``:
         both need a cached agent from a completed turn and refuse while a run is in flight.

@@ -27,8 +27,8 @@ _CONTROL_COMMANDS = frozenset({'title'})
 # local session: goal/loop/heartbeat state on the session's row, the review/refine forks of its
 # cached agent, the /debug summary upload, /blueprint's job creation. A turn the handler would have
 # pushed onto the adapter FIFO comes back as a ``send`` directive (gateway/session_command_sink.py).
-_HANDLER_CONTROLS = frozenset({'goal', 'subgoal', 'loop', 'heartbeat', 'review', 'refine', 'debug', 'curator',
-                               'login', 'autoprune'})
+_HANDLER_CONTROLS = frozenset({'goal', 'subgoal', 'loop', 'heartbeat', 'delay', 'review', 'refine', 'debug',
+                               'curator', 'login', 'autoprune'})
 # Idle-path commands the messaging gateway answers by rewriting the turn (``_hm_cmd_<name>``,
 # gateway/run_inbound.py): the rewritten text is returned as the client's ``send`` directive.
 _PROMPT_COMMANDS = frozenset({'plan', 'learn', 'init', 'moa', 'blueprint', 'egress'})
@@ -51,7 +51,7 @@ _INFO_READS = frozenset({'toolsets', 'platforms'})
 # /cron run lasts as long as its job, so it keeps main's refusal whichever surface created the session.
 _OWNER_COMMANDS = frozenset({'cron'})
 # Commands that move the session's goal/loop/heartbeat state: every viewer's cards repaint after them.
-_AUTOMATION_COMMANDS = frozenset({'goal', 'subgoal', 'loop', 'heartbeat'})
+_AUTOMATION_COMMANDS = frozenset({'goal', 'subgoal', 'loop', 'heartbeat', 'delay'})
 
 # Kanban verbs that only read the board. ``create`` would also subscribe the LOCAL chat to
 # messaging notifications, and every other verb mutates the board.
