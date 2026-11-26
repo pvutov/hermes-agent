@@ -1024,8 +1024,9 @@ def _action_update(job: dict[str, Any], a: dict[str, Any]) -> str:
     # An update can switch modes or delivery — echo the same guidance as create.
     _deliver_arg = _normalize_deliver_param(a["deliver"])
     _result = {"success": True, "job": _format_job(updated)}
-    # Switching delivery to a lane that reaches nobody is the same trap as creating that way.
-    _local_notice = _local_delivery_notice(updated, _deliver_arg)
+    # Switching delivery to a lane that reaches nobody is the same trap as creating that way; an
+    # unrelated edit of an already-local job changes nothing, so it must not nag.
+    _local_notice = _local_delivery_notice(updated, _deliver_arg) if a["deliver"] is not None else None
     if _local_notice:
         _result["delivery_notice"] = _local_notice
     return _dumps(_with_guidance(_result, updated, _deliver_arg))
