@@ -131,6 +131,69 @@ class TestDelayManager:
         assert mgr.is_active() is True
         assert mgr.due_prompt() is not None
 
+    def test_a_rewound_delay_fires_and_retires_only_once_more(self, iso_home):
+        """The rewind restores the pre-fire claim exactly: one more fire, then retired again."""
+        from hermes_cli.heartbeat import HeartbeatManager, load_heartbeat
+
+        mgr = HeartbeatManager("sess-rewind-once")
+        mgr.delay("must not be lost", 60)
+        _elapse(mgr, iso_home, 120)
+        assert mgr.due_prompt() is not None
+
+        assert mgr.abandon_fire() is True
+        assert mgr.state.fire_count == 0            # the fire was un-recorded, not just re-armed
+        assert mgr.due_prompt() is not None         # the turn gets its second chance
+        assert mgr.state.fire_count == 1
+        assert mgr.due_prompt() is None             # and is not handed over a third time
+        assert load_heartbeat("sess-rewind-once") is None   # retired again, hidden from callers
+
+    def test_abandon_cannot_rewind_a_delay_a_newer_schedule_replaced(self, iso_home):
+        """A schedule set between the fire and the rewind wins; the stale fire is not resurrected."""
+        from hermes_cli.heartbeat import HeartbeatManager
+
+        mgr = HeartbeatManager("sess-abandon-raced")
+        mgr.delay("must not be lost", 60)
+        _elapse(mgr, iso_home, 120)
+        assert mgr.due_prompt() is not None
+
+        HeartbeatManager("sess-abandon-raced").set("watch CI", 600)  # another viewer moved on
+        assert mgr.abandon_fire() is False
+        assert mgr.is_active() is False
+        assert mgr.due_prompt() is None
+
+    def test_a_second_claim_on_the_same_delay_is_refused(self, iso_home):
+        """Two managers over one row: only the one that claimed the fire may rewind it."""
+        from hermes_cli.heartbeat import HeartbeatManager
+
+        first = HeartbeatManager("sess-two-claims")
+        first.delay("must not be lost", 60)
+        second = HeartbeatManager("sess-two-claims")
+        _elapse(second, iso_home, 120)
+        first._state = second.state                # both now hold the same pre-fire snapshot
+
+        assert first.due_prompt() is not None      # first wins the claim
+        assert second.due_prompt() is None         # second sees the retired row and stands down
+        assert second.abandon_fire() is False      # and must not rewind the winner's fire
+
+    def test_a_new_schedule_cannot_rewind_the_replaced_ones_fire(self, iso_home):
+        """The claim describes the state it was taken on; replacing it must discard that claim.
+
+        Without the reset the stale claim still matches the fresh row's (0.0, 0.0), so
+        ``abandon_fire`` reports True — telling its caller a fire was rewound when the schedule it
+        belonged to no longer exists.
+        """
+        from hermes_cli.heartbeat import HeartbeatManager
+
+        mgr = HeartbeatManager("sess-stale-claim")
+        mgr.set("first", 60)
+        _elapse(mgr, iso_home, 120)
+        assert mgr.due_prompt() is not None        # fired; a claim is now outstanding
+
+        mgr.set("second", 60)                      # a new schedule replaces it, un-fired
+        assert mgr.abandon_fire() is False         # nothing of the SECOND schedule has fired
+        assert mgr.state.fire_count == 0
+        assert mgr.due_prompt() is None            # and it still waits its own interval
+
     def test_recurring_heartbeat_is_unaffected(self, iso_home):
         from hermes_cli.heartbeat import HeartbeatManager
 
@@ -150,6 +213,37 @@ class TestDelayManager:
         line = mgr.status_line()
         assert "Delay" in line and "once in" in line
         assert "Heartbeat (every" not in line
+
+    def test_a_retired_delay_stops_reporting_as_a_schedule(self, iso_home):
+        """The row outlives its fire so abandon_fire can rewind it; status must not read it as live."""
+        from hermes_cli.heartbeat import HeartbeatManager
+
+        mgr = HeartbeatManager("sess-retired-status")
+        mgr.delay("check build", 60)
+        _elapse(mgr, iso_home, 120)
+        assert mgr.due_prompt() is not None
+
+        # Same manager: it still holds the state it is keeping rewindable.
+        assert mgr.status_line() == "No heartbeat. Set one with /heartbeat every <interval> <prompt>."
+        # A fresh manager never sees the retired row at all.
+        assert HeartbeatManager("sess-retired-status").status_line().startswith("No heartbeat")
+
+    def test_a_retired_delay_is_not_pauseable_or_resumable(self, iso_home):
+        """pause/resume/clear must not resurrect the delay the row is only kept to rewind."""
+        from hermes_cli.heartbeat import HeartbeatManager
+
+        mgr = HeartbeatManager("sess-retired-verbs")
+        mgr.delay("check build", 60)
+        _elapse(mgr, iso_home, 120)
+        assert mgr.due_prompt() is not None
+
+        assert mgr.pause() is None
+        assert mgr.resume() is None
+        assert mgr.clear() is False
+        # And the rewind still works afterwards: the row was never rewritten by those verbs.
+        assert mgr.abandon_fire() is True
+        assert mgr.is_active() is True
+        assert mgr.due_prompt() is not None
 
 
 class TestDelayIntervalParsing:
