@@ -878,6 +878,10 @@ def cron_edit(args):
     print(f"  Skills: {', '.join(updated['skills'])}" if updated.get("skills") else
           "  Skills: none")
     _print_job_details(updated)
+    # Same trap as create: an edit that moves delivery to a lane reaching nobody still prints a
+    # clean summary above, so the warning has to be repeated here.
+    if result.get("delivery_notice"):
+        print(f"  Note: {result['delivery_notice']}")
     return 0
 
 

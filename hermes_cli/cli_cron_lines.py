@@ -175,9 +175,14 @@ def _edit_lines(subcommand: str, opts: dict) -> list[str]:
     if not result.get("success"):
         return [_t("cron.update_failed", error=result.get("error"))]
     job = result["job"]
-    return [_t("cron.updated", job_id=job["job_id"]), f"  {_t('cron.schedule', schedule=job['schedule'])}",
-            f"  {_t('cron.skills', skills=', '.join(job['skills']))}" if job.get("skills")
-            else f"  {_t('cron.skills_none')}"]
+    out = [_t("cron.updated", job_id=job["job_id"]), f"  {_t('cron.schedule', schedule=job['schedule'])}",
+           f"  {_t('cron.skills', skills=', '.join(job['skills']))}" if job.get("skills")
+           else f"  {_t('cron.skills_none')}"]
+    # Same trap as /cron add: an edit that moves delivery to a lane reaching nobody still prints a
+    # clean summary above.
+    if result.get("delivery_notice"):
+        out.append(f"  {_t('cron.delivery_notice', notice=result['delivery_notice'])}")
+    return out
 
 
 def _job_action_lines(subcommand: str, opts: dict) -> list[str]:
