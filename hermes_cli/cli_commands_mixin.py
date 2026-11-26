@@ -42,6 +42,7 @@ from hermes_cli.browser_connect import (
     launch_chrome_debug, local_port_in_use, manual_chrome_debug_command)
 from hermes_cli.cli_browser_gateway import _normalize_cdp_url
 from hermes_cli.cli_commands_handoff import CLIHandoffMixin, _db_unavailable_line
+from hermes_cli.cli_commands_heartbeat import CLISessionHeartbeatMixin
 
 
 # Output helpers. Slash-command text is user-visible: every literal below is load-bearing.
@@ -386,7 +387,7 @@ _BROWSER_SUBCOMMANDS = {
 }
 
 
-class CLICommandsMixin(CLICommandsSessionToolsMixin, CLIHandoffMixin):
+class CLICommandsMixin(CLICommandsSessionToolsMixin, CLIHandoffMixin, CLISessionHeartbeatMixin):
     """Mixin holding the interactive-CLI slash-command handlers."""
 
     # ---- /rollback ------------------------------------------------------------------------
@@ -1438,107 +1439,6 @@ class CLICommandsMixin(CLICommandsSessionToolsMixin, CLIHandoffMixin):
             from hermes_cli.cli_browser_gateway import gateway_browser
             return gateway_browser(self, connection, word, rest.strip())
         handler(self, rest.strip())
-
-    # ---- /heartbeat, /refine, /review -----------------------------------------------------
-    def _session_manager(self, getter, label: str):
-        """The session-scoped manager from ``getter()``, or None after the standard dim
-        "<label> unavailable (no active session)." line."""
-        mgr = getter()
-        if mgr is None:
-            _cp(_dim_line(_t("shared.unavailable_no_session", label=label)))
-        return mgr
-
-    def _handle_heartbeat_command(self, cmd: str) -> None:
-        """Dispatch /heartbeat: set / status / pause / resume / clear. ``/heartbeat every 10m <prompt>``
-        sets the session's one recurring instruction, injected as a normal user turn when due.
-        Session-scoped and in-process — use `hermes cron` for durable schedules."""
-        from hermes_cli.heartbeat import format_interval
-        arg = _command_arg(cmd)
-        lower = arg.lower()
-        mgr = self._session_manager(self._get_heartbeat_manager, _t("heartbeat.label"))
-        if mgr is None:
-            return
-        if not arg or lower == "status":
-            _cp(f"  {mgr.status_line()}")
-        elif lower == "pause":
-            state = mgr.pause()
-            _cp(f"  {_t('heartbeat.paused', prompt=state.prompt)}" if state
-                else _dim_line(_t("heartbeat.none_set")))
-        elif lower == "resume":
-            state = mgr.resume()
-            if state is None:
-                _cp(_dim_line(_t("heartbeat.none_to_resume")))
-            else:
-                self._start_heartbeat_watchdog()
-                _cp(f"  {_t('heartbeat.resumed', interval=format_interval(state.interval_seconds), prompt=state.prompt)}")
-        elif lower in {"clear", "stop", "off"}:
-            _cp(f"  {_t('heartbeat.cleared')}" if mgr.clear() else _dim_line(_t("heartbeat.none_set")))
-        else:
-            self._heartbeat_set(mgr, arg)
-
-    def _heartbeat_set(self, mgr, arg: str) -> None:
-        """Set: ``/heartbeat every 10m <prompt>`` (also accepts ``10m <prompt>``)."""
-        from hermes_cli.heartbeat import parse_interval, format_interval
-        tokens = arg.split(None, 2)
-        interval = None
-        prompt = ""
-        if tokens and tokens[0].lower() == "every" and len(tokens) >= 2:
-            interval = parse_interval(f"every {tokens[1]}")
-            prompt = tokens[2] if len(tokens) > 2 else ""
-        elif tokens:
-            interval = parse_interval(tokens[0])
-            prompt = arg[len(tokens[0]):].strip() if interval and interval > 0 else ""
-        if interval is None:
-            return _cp(f"  {_t('heartbeat.usage')}", _dim_line(_t("heartbeat.usage_also")))
-        if interval < 0:
-            from hermes_cli.heartbeat import MIN_INTERVAL_SECONDS
-            return _cp(f"  {_t('heartbeat.interval_too_small', min_seconds=MIN_INTERVAL_SECONDS)}")
-        if not prompt.strip():
-            return _cp(f"  {_t('heartbeat.prompt_required')}")
-        state = _attempt(_t("heartbeat.invalid_label"), ValueError, mgr.set, prompt, interval)
-        if state is _FAILED:
-            return
-        self._start_heartbeat_watchdog()
-        _cp(f"  {_t('heartbeat.set', interval=format_interval(state.interval_seconds), prompt=state.prompt)}",
-            _dim_line(_t("heartbeat.set_note")))
-
-    def _handle_delay_command(self, cmd: str) -> None:
-        """Dispatch /delay <interval> <prompt> — defer one instruction into THIS session.
-
-        Implemented on the session heartbeat (one-shot): the deferred prompt re-enters this
-        conversation, with its context intact, as an ordinary user turn once the interval elapses
-        and the session is idle. Nothing is inferred at delay time, so a /delay costs no backend
-        load until it fires.
-        """
-        from hermes_cli.heartbeat import parse_interval, format_interval
-        arg = _command_arg(cmd)
-        tokens = arg.split(None, 1)
-        if not tokens:
-            return _cp(f"  {_t('delay.usage')}", _dim_line(_t("delay.usage_also")))
-        # Bare "5h" means "in 5h" here: unlike /cron, a delay is one-shot by definition, so the
-        # explicit "in " prefix the schedule parser needs would be noise.
-        interval = parse_interval(tokens[0])
-        prompt = tokens[1].strip() if len(tokens) > 1 else ""
-        if interval is None:
-            return _cp(f"  {_t('delay.usage')}", _dim_line(_t("delay.usage_also")))
-        if interval < 0:
-            from hermes_cli.heartbeat import MIN_INTERVAL_SECONDS
-            return _cp(f"  {_t('delay.interval_too_small', min_seconds=MIN_INTERVAL_SECONDS)}")
-        if not prompt:
-            return _cp(f"  {_t('delay.prompt_required')}")
-        mgr = self._session_manager(self._get_heartbeat_manager, _t("heartbeat.label"))
-        if mgr is None:
-            return
-        # A delay is a single instruction: replacing an existing heartbeat would silently drop a
-        # standing one, so refuse rather than clobber.
-        if mgr.is_active() and not getattr(mgr.state, "once", False):
-            return _cp(f"  {_t('delay.heartbeat_active')}")
-        state = _attempt(_t("delay.invalid_label"), ValueError, mgr.delay, prompt, interval)
-        if state is _FAILED:
-            return
-        self._start_heartbeat_watchdog()
-        _cp(f"  {_t('delay.set', interval=format_interval(state.interval_seconds), prompt=state.prompt)}",
-            _dim_line(_t("delay.set_note")))
 
     def _handle_refine_command(self, cmd: str) -> None:
         """Dispatch /refine — run the memory/skill review fork on demand (same machinery as the
