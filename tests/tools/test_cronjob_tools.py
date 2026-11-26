@@ -611,6 +611,9 @@ class TestLocalDeliveryNotice:
         # Omitted deliver from a session with no origin downgrades to local.
         assert created["deliver"] == "local"
         assert "local-only cron job" in created["message"]
+        # The CLI prints its own summary rather than ``message``, so the notice must also be
+        # present as a field it can read; otherwise the job looks successfully delivered there.
+        assert "local-only cron job" in created["delivery_notice"]
 
 
     def test_gateway_origin_no_notice(self, monkeypatch):
@@ -624,6 +627,8 @@ class TestLocalDeliveryNotice:
         )
         assert created["deliver"] == "origin"
         assert "local-only cron job" not in created["message"]
+        # No delivery problem means no structured notice for the CLI either.
+        assert "delivery_notice" not in created
 
 
 class TestValidateCronBaseUrl:

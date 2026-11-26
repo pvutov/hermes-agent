@@ -138,7 +138,13 @@ def _add_lines(subcommand: str, opts: dict) -> list[str]:
     out = [_t("cron.created", job_id=result["job_id"]), f"  {_t('cron.schedule', schedule=result['schedule'])}"]
     if result.get("skills"):
         out.append(f"  {_t('cron.skills', skills=', '.join(result['skills']))}")
-    return [*out, f"  {_t('cron.next_run', value=result['next_run_at'])}"]
+    out.append(f"  {_t('cron.next_run', value=result['next_run_at'])}")
+    # A job whose output reaches nobody still looks successful in the summary above, so say it
+    # here: neither the classic CLI nor a local gateway session has a live-delivery channel back
+    # to this terminal, so the result would otherwise land only in cron/output/.
+    if result.get("delivery_notice"):
+        out.append(f"  {_t('cron.delivery_notice', notice=result['delivery_notice'])}")
+    return out
 
 
 def _edit_lines(subcommand: str, opts: dict) -> list[str]:

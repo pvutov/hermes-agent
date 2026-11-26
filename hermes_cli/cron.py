@@ -832,6 +832,10 @@ def cron_create(args):
         print("  Created PAUSED — resume to schedule, or explicitly run now.")
     else:
         print(f"  Next run: {result['next_run_at']}")
+    # A job whose output reaches nobody still looks successful in the summary above, so say it
+    # here: the classic CLI has no live-delivery channel to hand the result back to this terminal.
+    if result.get("delivery_notice"):
+        print(f"  Note: {result['delivery_notice']}")
     _warn_if_gateway_not_running()
     return 0
 

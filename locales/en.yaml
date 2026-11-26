@@ -3099,6 +3099,7 @@ cli:
       schedule_repeat: "Schedule: {schedule} ({repeat})"
       next_run: "Next run: {value}"
       next_run_na: "Next run: N/A"
+      delivery_notice: "Note: {notice}"
       prompt: "Prompt: {prompt}"
       status_delivery_failed: "delivery_failed: {error}"
       status_error: "error: {error}"

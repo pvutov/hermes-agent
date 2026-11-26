@@ -740,9 +740,10 @@ def _action_create(a: dict[str, Any]) -> str:
     except CronSchedulerRegistrationError as exc:
         _partial = exc.to_dict()
         return tool_error(_partial.pop("error"), success=False, **_partial)
+    _local_notice = _local_delivery_notice(job, deliver)
     _create_message = " ".join(filter(None, (f"Cron job '{job['name']}' created.",
         "Created PAUSED — resume to schedule, or explicitly run now." if not job.get("enabled", True) else None,
-        _local_delivery_notice(job, deliver))))
+        _local_notice)))
     # The builtin ticker lives in the gateway process: with no gateway running the job is stored
     # but never fires — tell the model (the CLI already warns).
     _result = {
@@ -751,6 +752,10 @@ def _action_create(a: dict[str, Any]) -> str:
         "deliver": job.get("deliver", "local"), "next_run_at": job["next_run_at"], "job": _format_job(job),
         "message": _create_message, **_gateway_liveness_notice(),
     }
+    # Structured copy for surfaces that print their own summary instead of ``message`` (the classic
+    # CLI and /cron do), so a no-delivery job cannot look successfully delivered there (#51568).
+    if _local_notice:
+        _result["delivery_notice"] = _local_notice
     return _dumps(_with_guidance(_result, job, deliver))
 
 
@@ -1014,9 +1019,16 @@ def _action_update(job: dict[str, Any], a: dict[str, Any]) -> str:
         return tool_error("No updates provided.", success=False)
     updated = update_job(job["id"], updates)
     _notify_provider_jobs_changed_safe()
+    if updated is None:  # the job vanished between resolution and the write
+        return tool_error(f"Cron job '{job['id']}' not found.", success=False)
     # An update can switch modes or delivery — echo the same guidance as create.
-    return _dumps(_with_guidance(
-        {"success": True, "job": _format_job(updated)}, updated, _normalize_deliver_param(a["deliver"])))
+    _deliver_arg = _normalize_deliver_param(a["deliver"])
+    _result = {"success": True, "job": _format_job(updated)}
+    # Switching delivery to a lane that reaches nobody is the same trap as creating that way.
+    _local_notice = _local_delivery_notice(updated, _deliver_arg)
+    if _local_notice:
+        _result["delivery_notice"] = _local_notice
+    return _dumps(_with_guidance(_result, updated, _deliver_arg))
 
 
 _JOBLESS_ACTIONS = {"create": _action_create, "list": _action_list}
