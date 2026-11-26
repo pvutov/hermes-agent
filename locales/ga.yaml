@@ -1612,6 +1612,8 @@ slash:
     description: "Socraigh sprioc sheasta a n-oibríonn Hermes uirthi thar shealanna go dtí go mbaintear amach í"
   heartbeat:
     description: "Socraigh leid athfhillteach a thagann isteach sa seisiún seo arís nuair atá sé díomhaoin"
+  delay:
+    description: "Déan rud éigin níos déanaí uair amháin sa chomhrá seo (m.sh. /delay 5h féach ar an mbuild)"
   refine:
     description: "Athbhreithnigh an comhrá seo anois agus sábháil ceachtanna sa chuimhne/sna scileanna"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Buille croí neamhbhailí"
       set: "♥ Buille croí socraithe (gach {interval}): {prompt}"
       set_note: "Lasann sé mar ghnáthsheal aon uair a bhíonn an seisiún díomhaoin agus an t-eatramh caite. /heartbeat pause | resume | clear le bainistiú; ní mhaireann sé ach fad a bhíonn an próiseas Hermes seo ag rith — úsáid `hermes cron` le haghaidh sceideal buan."
+    delay:
+      label: "Moilleanna"
+      usage: "Úsáid: /delay <interval> <prompt>   (m.sh. /delay 5h féach ar an rabhadh Jenkins seo)"
+      usage_also: "Eatramh: 30m, 5h, 2d (íosmhéid 60s). Lasann sé uair amháin, sa chomhrá seo, nuair a bhíonn an seisiún díomhaoin — úsáid `hermes cron` le haghaidh obair bhuan."
+      interval_too_small: "Eatramh róbheag — is é {min_seconds}s an t-íosmhéid."
+      prompt_required: "Úsáid: /delay <interval> <prompt> — tá an leid riachtanach."
+      invalid_label: "Moill neamhbhailí"
+      heartbeat_active: "⏸ Tá buille croí athfhillteach gníomhach sa seisiún seo cheana. Glan é le /heartbeat clear sula n-úsáideann tú /delay, ionas nach n-athshocróidh ceachtar acu an ceann eile go ciúin."
+      set: "⏳ Moillithe (uair amháin i {interval}): {prompt}"
+      set_note: "Lasann sé mar aon ghnáthsheal amháin sa chomhrá seo, an comhthéacs slán, a luaithe a théann an t-eatramh thart agus a bhíonn an seisiún díomhaoin. Ní ritheann aon rud roimhe sin, mar sin ní chosnaíonn an fanacht aon ualach backend. Cealaigh le /heartbeat clear."
     refine:
       nothing_yet: "Níl aon rud le mionchoigeartú fós — seol teachtaireacht ar dtús."
       empty: "Níl aon rud le mionchoigeartú fós — tá an comhrá folamh."

@@ -1612,6 +1612,8 @@ slash:
     description: "Hermes'in ulaşılana dek turlar boyunca çalışacağı kalıcı bir hedef belirle"
   heartbeat:
     description: "Boşta kalınca bu oturuma yeniden giren yinelenen bir istem ayarla"
+  delay:
+    description: "Bu sohbette daha sonra bir kez bir şey yap (örn. /delay 5h derlemeye bak)"
   refine:
     description: "Bu konuşmayı şimdi incele ve dersleri bellek/skill'lere kaydet"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Geçersiz heartbeat"
       set: "♥ Heartbeat ayarlandı (her {interval}): {prompt}"
       set_note: "Oturum boşta olduğunda ve aralık dolduğunda normal bir tur olarak tetiklenir. Yönetmek için /heartbeat pause | resume | clear; yalnızca bu Hermes süreci çalıştığı sürece geçerlidir — kalıcı zamanlamalar için `hermes cron` kullanın."
+    delay:
+      label: "Gecikmeler"
+      usage: "Kullanım: /delay <interval> <prompt>   (örn. /delay 5h şu Jenkins uyarısına bak)"
+      usage_also: "Aralıklar: 30m, 5h, 2d (en az 60s). Oturum boştayken bu sohbette bir kez tetiklenir — kalıcı işler için `hermes cron` kullanın."
+      interval_too_small: "Aralık çok küçük — en az {min_seconds}s olmalıdır."
+      prompt_required: "Kullanım: /delay <interval> <prompt> — istem zorunludur."
+      invalid_label: "Geçersiz gecikme"
+      heartbeat_active: "⏸ Bu oturumda zaten yinelenen bir heartbeat etkin. /delay kullanmadan önce /heartbeat clear ile temizleyin; biri diğerinin yerine sessizce geçmesin."
+      set: "⏳ Geciktirildi ({interval} sonra bir kez): {prompt}"
+      set_note: "Aralık dolduğunda ve oturum boşta olduğunda bu sohbette bağlam korunarak tek bir normal tur olarak tetiklenir. O ana kadar hiçbir şey çalışmaz, yani bekleme arka uç yükü doğurmaz. İptal için /heartbeat clear."
     refine:
       nothing_yet: "Henüz iyileştirilecek bir şey yok — önce bir mesaj gönderin."
       empty: "Henüz iyileştirilecek bir şey yok — konuşma boş."

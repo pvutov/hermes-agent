@@ -1612,6 +1612,8 @@ slash:
     description: "设定一个长期目标，Hermes 会跨回合持续推进直到达成"
   heartbeat:
     description: "设置一条周期性提示词，在空闲时重新进入此会话"
+  delay:
+    description: "稍后在本对话中做一件事，只做一次（例如 /delay 5h 看看构建）"
   refine:
     description: "立即回顾本次对话，并将经验保存到记忆/技能"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "无效心跳"
       set: "♥ 心跳已设置（每 {interval}）：{prompt}"
       set_note: "会话空闲且间隔已到时，作为普通回合触发。使用 /heartbeat pause | resume | clear 进行管理；仅在当前 Hermes 进程运行期间有效——如需持久化的计划任务，请使用 `hermes cron`。"
+    delay:
+      label: "延迟任务"
+      usage: "用法：/delay <interval> <prompt>   （例如 /delay 5h 看看这个 Jenkins 警告）"
+      usage_also: "间隔：30m、5h、2d（最小 60 秒）。会话空闲时在本对话中触发一次——需要持久化的任务请使用 `hermes cron`。"
+      interval_too_small: "间隔太短——最小为 {min_seconds} 秒。"
+      prompt_required: "用法：/delay <interval> <prompt>——必须提供提示词。"
+      invalid_label: "无效的延迟任务"
+      heartbeat_active: "⏸ 本会话已有重复心跳在运行。请先执行 /heartbeat clear 清除它，再使用 /delay，以免两者悄悄互相替换。"
+      set: "⏳ 已延迟（{interval} 后执行一次）：{prompt}"
+      set_note: "间隔到达且会话空闲后，在本对话中以上下文完整的单个普通回合触发一次。在此之前不会运行任何东西，因此等待不产生后端负载。用 /heartbeat clear 取消。"
     refine:
       nothing_yet: "还没有可精炼的内容——请先发送一条消息。"
       empty: "还没有可精炼的内容——对话为空。"

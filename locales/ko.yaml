@@ -1612,6 +1612,8 @@ slash:
     description: "달성할 때까지 Hermes가 여러 턴에 걸쳐 수행할 상시 목표 설정"
   heartbeat:
     description: "유휴 상태일 때 이 세션에 다시 들어오는 반복 프롬프트 설정"
+  delay:
+    description: "이 대화에서 나중에 한 번만 무엇인가 하기 (예: /delay 5h 빌드를 확인해줘)"
   refine:
     description: "지금 이 대화를 리뷰하고 교훈을 메모리/스킬에 저장"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "잘못된 하트비트"
       set: "♥ 하트비트 설정됨 ({interval}마다): {prompt}"
       set_note: "세션이 유휴 상태이고 간격이 지날 때마다 일반 턴으로 실행돼요. /heartbeat pause | resume | clear로 관리할 수 있어요. 이 Hermes 프로세스가 실행되는 동안만 유지되니, 영구적인 예약은 `hermes cron`을 사용하세요."
+    delay:
+      label: "지연 실행"
+      usage: "사용법: /delay <interval> <prompt>   (예: /delay 5h 이 Jenkins 경고를 확인해줘)"
+      usage_also: "간격: 30m, 5h, 2d (최소 60초). 세션이 유휴 상태가 되면 이 대화에서 한 번만 실행돼요 — 영구적인 작업은 `hermes cron`을 사용하세요."
+      interval_too_small: "간격이 너무 짧아요 — 최소 {min_seconds}초예요."
+      prompt_required: "사용법: /delay <interval> <prompt> — 프롬프트는 필수예요."
+      invalid_label: "잘못된 지연 실행"
+      heartbeat_active: "⏸ 이 세션에는 이미 반복 하트비트가 동작 중이에요. /delay를 쓰기 전에 /heartbeat clear로 지워 주세요. 둘 중 하나가 다른 하나를 조용히 덮어쓰지 않도록 하기 위해서예요."
+      set: "⏳ 지연 실행 설정됨 ({interval} 뒤에 한 번): {prompt}"
+      set_note: "간격이 지나고 세션이 유휴 상태가 되면 이 대화에서 컨텍스트를 그대로 유지한 채 일반 턴 하나로 실행돼요. 그전까지는 아무것도 돌지 않아서 기다리는 동안 백엔드 부하가 없어요. 취소하려면 /heartbeat clear."
     refine:
       nothing_yet: "아직 다듬을 내용이 없어요 — 먼저 메시지를 보내세요."
       empty: "아직 다듬을 내용이 없어요 — 대화가 비어 있어요."

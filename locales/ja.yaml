@@ -1612,6 +1612,8 @@ slash:
     description: "達成までターンをまたいで Hermes が取り組む継続目標を設定"
   heartbeat:
     description: "アイドル時にこのセッションへ再投入される定期プロンプトを設定"
+  delay:
+    description: "この会話で後で一度だけ何かをする (例: /delay 5h ビルドを確認して)"
   refine:
     description: "この会話を今レビューし、学んだことをメモリ/スキルに保存"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "無効なハートビート"
       set: "♥ ハートビートを設定しました ({interval} ごと): {prompt}"
       set_note: "セッションがアイドル状態で、かつ間隔が経過するたびに通常のターンとして実行されます。管理は /heartbeat pause | resume | clear で行えます。この Hermes プロセスが動作している間だけ有効です — 永続的なスケジュールには `hermes cron` を使ってください。"
+    delay:
+      label: "遅延実行"
+      usage: "使い方: /delay <interval> <prompt>   (例: /delay 5h この Jenkins の警告を確認して)"
+      usage_also: "間隔: 30m、5h、2d（最小 60 秒）。セッションがアイドルになったら、この会話の中で一度だけ実行されます — 永続的な処理には `hermes cron` を使ってください。"
+      interval_too_small: "間隔が短すぎます — 最小は {min_seconds} 秒です。"
+      prompt_required: "使い方: /delay <interval> <prompt> — プロンプトは必須です。"
+      invalid_label: "無効な遅延実行"
+      heartbeat_active: "⏸ このセッションではすでに定期ハートビートが動作しています。/delay を使う前に /heartbeat clear で解除してください。どちらかが黙って他方を置き換えないようにするためです。"
+      set: "⏳ 遅延実行を設定しました ({interval} 後に一度): {prompt}"
+      set_note: "間隔が経過し、セッションがアイドルになると、この会話の中でコンテキストを保ったまま通常のターンとして一度だけ実行されます。それまでは何も動かないため、待機中はバックエンドの負荷がかかりません。取り消すには /heartbeat clear。"
     refine:
       nothing_yet: "まだ改善する対象がありません — 先にメッセージを送ってください。"
       empty: "まだ改善する対象がありません — 会話が空です。"

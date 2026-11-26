@@ -1612,6 +1612,8 @@ slash:
     description: "Establecer un objetivo permanente en el que Hermes trabaja turno tras turno hasta lograrlo"
   heartbeat:
     description: "Establecer un prompt recurrente que vuelve a entrar en esta sesión cuando está inactiva"
+  delay:
+    description: "Hacer algo más tarde una vez en esta conversación (p. ej. /delay 5h revisa la compilación)"
   refine:
     description: "Revisar esta conversación ahora y guardar lecciones en memoria/skills"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Heartbeat no válido"
       set: "♥ Heartbeat configurado (cada {interval}): {prompt}"
       set_note: "Se ejecuta como un turno normal cuando la sesión está inactiva y ha pasado el intervalo. Gestiónalo con /heartbeat pause | resume | clear; solo existe mientras corre este proceso de Hermes — usa `hermes cron` para programaciones persistentes."
+    delay:
+      label: "Retrasos"
+      usage: "Uso: /delay <interval> <prompt>   (p. ej. /delay 5h revisa esta advertencia de Jenkins)"
+      usage_also: "Intervalos: 30m, 5h, 2d (mínimo 60s). Se ejecuta una vez, en esta conversación, cuando la sesión está inactiva — usa `hermes cron` para trabajo duradero."
+      interval_too_small: "Intervalo demasiado corto — el mínimo es {min_seconds}s."
+      prompt_required: "Uso: /delay <interval> <prompt> — el prompt es obligatorio."
+      invalid_label: "Retraso no válido"
+      heartbeat_active: "⏸ Ya hay un heartbeat recurrente activo en esta sesión. Elimínalo con /heartbeat clear antes de usar /delay, para que ninguno sustituya al otro en silencio."
+      set: "⏳ Aplazado (una vez en {interval}): {prompt}"
+      set_note: "Se ejecuta como un único turno normal en esta conversación, con el contexto intacto, cuando pasa el intervalo y la sesión está inactiva. Hasta entonces no corre nada, así que la espera no cuesta carga de backend. Cancela con /heartbeat clear."
     refine:
       nothing_yet: "Aún no hay nada que refinar — envía primero un mensaje."
       empty: "Aún no hay nada que refinar — la conversación está vacía."

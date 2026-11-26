@@ -1629,6 +1629,8 @@ slash:
     description: "Állandó cél beállítása, amin a Hermes körökön át dolgozik, amíg el nem éri"
   heartbeat:
     description: "Ismétlődő prompt beállítása, ami tétlenség esetén újra belép a munkamenetbe"
+  delay:
+    description: "Tegyél valamit később, egyszer, ebben a beszélgetésben (pl. /delay 5h nézd meg a buildet)"
   refine:
     description: "A beszélgetés átnézése most, és a tanulságok mentése a memóriába/skillekbe"
   review:
@@ -3146,6 +3148,16 @@ cli:
       invalid_label: "Érvénytelen szívverés"
       set: "♥ Szívverés beállítva ({interval} időközzel): {prompt}"
       set_note: "Normál körként fut le, amikor a munkamenet tétlen és letelt az időköz. Kezelés: /heartbeat pause | resume | clear; csak addig él, amíg ez a Hermes folyamat fut — tartós ütemezéshez használd a `hermes cron` parancsot."
+    delay:
+      label: "Késleltetések"
+      usage: "Használat: /delay <interval> <prompt>   (pl. /delay 5h nézd meg ezt a Jenkins-figyelmeztetést)"
+      usage_also: "Időközök: 30m, 5h, 2d (minimum 60s). Egyszer fut le, ebben a beszélgetésben, amikor a munkamenet tétlen — tartós munkához használd a `hermes cron` parancsot."
+      interval_too_small: "Túl kicsi időköz — a minimum {min_seconds}s."
+      prompt_required: "Használat: /delay <interval> <prompt> — a prompt megadása kötelező."
+      invalid_label: "Érvénytelen késleltetés"
+      heartbeat_active: "⏸ Ebben a munkamenetben már aktív egy ismétlődő szívverés. Töröld a /heartbeat clear paranccsal, mielőtt a /delay-t használod, hogy egyik se cserélje le csendben a másikat."
+      set: "⏳ Késleltetve (egyszer {interval} múlva): {prompt}"
+      set_note: "Egyetlen normál körként fut le ebben a beszélgetésben, a kontextus megőrzésével, amint letelik az időköz és a munkamenet tétlen. Addig semmi sem fut, így a várakozás nem terheli a hátteret. Megszakítás: /heartbeat clear."
     refine:
       nothing_yet: "Még nincs mit finomítani — küldj először egy üzenetet."
       empty: "Még nincs mit finomítani — a beszélgetés üres."

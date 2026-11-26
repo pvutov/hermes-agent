@@ -1612,6 +1612,8 @@ slash:
     description: "Ein dauerhaftes Ziel setzen, an dem Hermes über mehrere Züge arbeitet, bis es erreicht ist"
   heartbeat:
     description: "Einen wiederkehrenden Prompt festlegen, der diese Sitzung im Leerlauf erneut aufruft"
+  delay:
+    description: "Etwas später einmal in dieser Unterhaltung tun (z. B. /delay 5h sieh dir den Build an)"
   refine:
     description: "Diese Konversation jetzt auswerten und Erkenntnisse in Memory/Skills speichern"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Ungültiger Heartbeat"
       set: "♥ Heartbeat gesetzt (alle {interval}): {prompt}"
       set_note: "Läuft als normaler Zug, sobald die Sitzung inaktiv ist und das Intervall abgelaufen ist. Verwaltung über /heartbeat pause | resume | clear; gilt nur, solange dieser Hermes-Prozess läuft — verwenden Sie `hermes cron` für dauerhafte Zeitpläne."
+    delay:
+      label: "Verzögerungen"
+      usage: "Verwendung: /delay <interval> <prompt>   (z. B. /delay 5h sieh dir diese Jenkins-Warnung an)"
+      usage_also: "Intervalle: 30m, 5h, 2d (Minimum 60s). Wird einmal ausgelöst, in dieser Unterhaltung, wenn die Sitzung inaktiv ist — verwenden Sie `hermes cron` für dauerhafte Arbeit."
+      interval_too_small: "Intervall zu klein — Minimum ist {min_seconds}s."
+      prompt_required: "Verwendung: /delay <interval> <prompt> — der Prompt ist erforderlich."
+      invalid_label: "Ungültige Verzögerung"
+      heartbeat_active: "⏸ In dieser Sitzung ist bereits ein wiederkehrender Heartbeat aktiv. Löschen Sie ihn mit /heartbeat clear, bevor Sie /delay verwenden, damit keiner den anderen stillschweigend ersetzt."
+      set: "⏳ Verzögert (einmal in {interval}): {prompt}"
+      set_note: "Läuft als einzelner normaler Zug in dieser Unterhaltung, mit intaktem Kontext, sobald das Intervall abgelaufen ist und die Sitzung inaktiv ist. Bis dahin läuft nichts, die Wartezeit kostet also keine Backend-Last. Abbrechen mit /heartbeat clear."
     refine:
       nothing_yet: "Noch nichts zu verfeinern — senden Sie zuerst eine Nachricht."
       empty: "Noch nichts zu verfeinern — die Konversation ist leer."

@@ -1612,6 +1612,8 @@ slash:
     description: "Definir um objetivo permanente no qual o Hermes trabalha ao longo dos turnos até alcançá-lo"
   heartbeat:
     description: "Definir um prompt recorrente que reentra nesta sessão quando ociosa"
+  delay:
+    description: "Fazer algo mais tarde, uma vez, nesta conversa (ex.: /delay 5h verifique o build)"
   refine:
     description: "Revisar esta conversa agora e salvar lições na memória/skills"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Heartbeat inválido"
       set: "♥ Heartbeat definido (a cada {interval}): {prompt}"
       set_note: "Dispara como um turno normal sempre que a sessão estiver ociosa e o intervalo tiver passado. /heartbeat pause | resume | clear para gerenciar; existe apenas enquanto este processo do Hermes estiver em execução — use `hermes cron` para agendamentos duráveis."
+    delay:
+      label: "Adiamentos"
+      usage: "Uso: /delay <interval> <prompt>   (ex.: /delay 5h verifique este aviso do Jenkins)"
+      usage_also: "Intervalos: 30m, 5h, 2d (mínimo 60s). Dispara uma vez, nesta conversa, quando a sessão estiver ociosa — use `hermes cron` para trabalho durável."
+      interval_too_small: "Intervalo muito pequeno — o mínimo é {min_seconds}s."
+      prompt_required: "Uso: /delay <interval> <prompt> — o prompt é obrigatório."
+      invalid_label: "Adiamento inválido"
+      heartbeat_active: "⏸ Já existe um heartbeat recorrente ativo nesta sessão. Remova-o com /heartbeat clear antes de usar /delay, para que nenhum substitua o outro em silêncio."
+      set: "⏳ Adiado (uma vez em {interval}): {prompt}"
+      set_note: "Dispara como um único turno normal nesta conversa, com o contexto intacto, assim que o intervalo passar e a sessão estiver ociosa. Nada roda antes disso, então a espera não custa carga de backend. Cancele com /heartbeat clear."
     refine:
       nothing_yet: "Nada para refinar ainda — envie uma mensagem primeiro."
       empty: "Nada para refinar ainda — a conversa está vazia."

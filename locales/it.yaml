@@ -1612,6 +1612,8 @@ slash:
     description: "Imposta un obiettivo permanente su cui Hermes lavora turno dopo turno fino a raggiungerlo"
   heartbeat:
     description: "Imposta un prompt ricorrente che rientra in questa sessione quando è inattiva"
+  delay:
+    description: "Fai qualcosa più tardi, una volta, in questa conversazione (es. /delay 5h controlla la build)"
   refine:
     description: "Rivedi subito questa conversazione e salva le lezioni in memoria/skill"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Heartbeat non valido"
       set: "♥ Heartbeat impostato (ogni {interval}): {prompt}"
       set_note: "Si attiva come un turno normale quando la sessione è inattiva e l'intervallo è trascorso. Gestiscilo con /heartbeat pause | resume | clear; vive solo finché questo processo Hermes è in esecuzione — per pianificazioni durevoli usa `hermes cron`."
+    delay:
+      label: "Ritardi"
+      usage: "Uso: /delay <interval> <prompt>   (es. /delay 5h controlla questo avviso di Jenkins)"
+      usage_also: "Intervalli: 30m, 5h, 2d (minimo 60s). Si attiva una volta, in questa conversazione, quando la sessione è inattiva — per lavoro durevole usa `hermes cron`."
+      interval_too_small: "Intervallo troppo breve — il minimo è {min_seconds}s."
+      prompt_required: "Uso: /delay <interval> <prompt> — il prompt è obbligatorio."
+      invalid_label: "Ritardo non valido"
+      heartbeat_active: "⏸ In questa sessione è già attivo un heartbeat ricorrente. Rimuovilo con /heartbeat clear prima di usare /delay, così nessuno sostituisce l'altro in silenzio."
+      set: "⏳ Rinviato (una volta tra {interval}): {prompt}"
+      set_note: "Si attiva come un unico turno normale in questa conversazione, con il contesto intatto, quando l'intervallo è trascorso e la sessione è inattiva. Prima non gira nulla, quindi l'attesa non costa carico sul backend. Annulla con /heartbeat clear."
     refine:
       nothing_yet: "Niente da perfezionare per ora — invia prima un messaggio."
       empty: "Niente da perfezionare per ora — la conversazione è vuota."

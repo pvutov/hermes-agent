@@ -1684,6 +1684,8 @@ slash:
     description: "Set a standing goal Hermes works on across turns until achieved"
   heartbeat:
     description: "Set a recurring prompt that re-enters this session when idle"
+  delay:
+    description: "Do something in this conversation later, once"
   refine:
     description: "Review this conversation now and save lessons to memory/skills"
   review:

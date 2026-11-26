@@ -1612,6 +1612,8 @@ slash:
     description: "Stel 'n staande doelwit waaraan Hermes oor beurte heen werk totdat dit bereik is"
   heartbeat:
     description: "Stel 'n herhalende prompt wat hierdie sessie weer binnegaan wanneer dit ledig is"
+  delay:
+    description: "Doen later iets een keer in hierdie gesprek (bv. /delay 5h kyk na die bou)"
   refine:
     description: "Hersien hierdie gesprek nou en stoor lesse in geheue/vaardighede"
   review:
@@ -3129,6 +3131,16 @@ cli:
       invalid_label: "Ongeldige hartklop"
       set: "♥ Hartklop gestel (elke {interval}): {prompt}"
       set_note: "Vuur as 'n gewone beurt af wanneer die sessie ledig is en die interval verstryk het. Bestuur met /heartbeat pause | resume | clear; bestaan net solank hierdie Hermes-proses loop — gebruik `hermes cron` vir blywende skedules."
+    delay:
+      label: "Vertragings"
+      usage: "Gebruik: /delay <interval> <prompt>   (bv. /delay 5h kyk na hierdie Jenkins-waarskuwing)"
+      usage_also: "Intervalle: 30m, 5h, 2d (minimum 60s). Vuur een keer, in hierdie gesprek, wanneer die sessie ledig is — gebruik `hermes cron` vir blywende werk."
+      interval_too_small: "Interval te klein — minimum is {min_seconds}s."
+      prompt_required: "Gebruik: /delay <interval> <prompt> — die prompt is verpligtend."
+      invalid_label: "Ongeldige vertraging"
+      heartbeat_active: "⏸ Daar is reeds 'n herhalende hartklop aktief in hierdie sessie. Verwyder dit met /heartbeat clear voordat jy /delay gebruik, sodat nie een die ander stilweg vervang nie."
+      set: "⏳ Vertraag (een keer oor {interval}): {prompt}"
+      set_note: "Vuur as 'n enkele gewone beurt in hierdie gesprek, met konteks ongeskonde, sodra die interval verstryk het en die sessie ledig is. Niks loop voor dit nie, so die wag kos geen backend-lading nie. Kanselleer met /heartbeat clear."
     refine:
       nothing_yet: "Nog niks om te verfyn nie — stuur eers 'n boodskap."
       empty: "Nog niks om te verfyn nie — die gesprek is leeg."
