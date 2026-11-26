@@ -630,6 +630,55 @@ class TestLocalDeliveryNotice:
         # No delivery problem means no structured notice for the CLI either.
         assert "delivery_notice" not in created
 
+    def test_explicit_local_create_stays_quiet(self):
+        # Asked for "local" means the user already knows output is saved only; nagging about it
+        # would be the tool arguing with an explicit instruction.
+        created = json.loads(
+            cronjob(action="create", prompt="x", schedule="every 2m", deliver="local")
+        )
+        assert created["deliver"] == "local"
+        assert "delivery_notice" not in created
+
+    def test_update_switching_deliver_to_origin_reports_notice(self):
+        """The notice is not create-only: an edit that moves delivery to a lane reaching nobody is
+        the same trap, and the CLI prints its own summary there too."""
+        created = json.loads(
+            cronjob(action="create", prompt="x", schedule="every 2m", deliver="telegram:42")
+        )
+        assert created["success"] is True, created
+        updated = json.loads(
+            cronjob(action="update", job_id=created["job_id"], deliver="origin")
+        )
+        assert updated["job"]["deliver"] == "origin"
+        assert "local-only cron job" in updated["delivery_notice"]
+
+    def test_unrelated_update_of_a_local_job_does_not_nag(self):
+        """An edit that leaves delivery untouched must not repeat the warning: the job was already
+        local when it was created, and the user is editing something else."""
+        created = json.loads(
+            cronjob(action="create", prompt="x", schedule="every 2m", deliver="local")
+        )
+        renamed = json.loads(
+            cronjob(action="update", job_id=created["job_id"], name="renamed")
+        )
+        assert renamed["job"]["name"] == "renamed"
+        assert "delivery_notice" not in renamed
+
+    def test_update_of_a_job_that_vanished_reports_an_error(self, monkeypatch):
+        """``update_job`` returns None when the job is gone between resolution and the write; the
+        caller must get a tool error, not a crash on ``job_id`` from None."""
+        import tools.cronjob_tools as tools_mod
+
+        created = json.loads(
+            cronjob(action="create", prompt="x", schedule="every 2m", deliver="local")
+        )
+        monkeypatch.setattr(tools_mod, "update_job", lambda job_id, updates: None)
+        updated = json.loads(
+            cronjob(action="update", job_id=created["job_id"], name="renamed")
+        )
+        assert updated["success"] is False
+        assert "not found" in updated["error"]
+
 
 class TestValidateCronBaseUrl:
     """The cron base_url guard must not let a NAMED custom provider's stored
